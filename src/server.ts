@@ -9,72 +9,49 @@ const PORT = process.env.PORT || 3000;
 // Serve static files from public directory
 app.use(express.static(path.join(__dirname, '../public')));
 
-// WordNet API endpoints
-const WORDNET_API_URL = 'http://docker-wordnet:5001/api/random';
+// New URLs for adjectives and nouns
+const ADJECTIVES_URL = 'https://raw.githubusercontent.com/InevitableMarble249/dictionaries/refs/heads/main/adjectives.json';
+const NOUNS_URL = 'https://raw.githubusercontent.com/InevitableMarble249/dictionaries/refs/heads/main/nouns.json';
 
 // Special characters for password
-const specialChars = ['!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '-', '_', '+', '=', '{', '}', '[', ']', '|', '\\', ':', ';', '<', '>', ',', '.', '?', '/'];
+const specialChars = ['!', '@', '#', '$', '%', '^', '&', '*', '?', '!!', '!!!', '@@', '@@@', '##', '###', '$$', '$$$', '%%', '^^', '&&', '&&&' ];
 
 /**
- * Fetches a random noun from WordNet API
+ * Fetches a random noun from the new dictionary
  */
 async function fetchRandomNoun(): Promise<{ word: string; definition: string }> {
   console.log('Fetching random noun...');
   try {
-    const response = await axios.get(`${WORDNET_API_URL}/noun`);
-    console.log('Noun API response:', response.data);
-    
-    if (!response.data || !response.data.word || !response.data.definition) {
-      console.error('Invalid noun response structure:', response.data);
-      throw new Error('Invalid response from noun API');
-    }
+    const response = await axios.get(NOUNS_URL);
+    const nouns = response.data;
+    const randomNoun = getRandomElement(nouns);
     
     return {
-      word: response.data.word,
-      definition: response.data.definition
+      word: randomNoun,
+      definition: 'Definition not available' // You can modify this if you have definitions
     };
   } catch (error: any) {
-    if (axios.isAxiosError(error)) {
-      console.error('Axios error fetching noun:', error.message);
-      if (error.response) {
-        console.error('Response data:', error.response.data);
-        console.error('Response status:', error.response.status);
-      }
-    } else {
-      console.error('Error fetching random noun:', error);
-    }
+    console.error('Error fetching random noun:', error);
     throw error;
   }
 }
 
 /**
- * Fetches a random adjective from WordNet API
+ * Fetches a random adjective from the new dictionary
  */
 async function fetchRandomAdjective(): Promise<{ word: string; definition: string }> {
   console.log('Fetching random adjective...');
   try {
-    const response = await axios.get(`${WORDNET_API_URL}/adjective`);
-    console.log('Adjective API response:', response.data);
-    
-    if (!response.data || !response.data.word || !response.data.definition) {
-      console.error('Invalid adjective response structure:', response.data);
-      throw new Error('Invalid response from adjective API');
-    }
+    const response = await axios.get(ADJECTIVES_URL);
+    const adjectives = response.data;
+    const randomAdjective = getRandomElement(adjectives);
     
     return {
-      word: response.data.word,
-      definition: response.data.definition
+      word: randomAdjective,
+      definition: 'Definition not available' // You can modify this if you have definitions
     };
   } catch (error: any) {
-    if (axios.isAxiosError(error)) {
-      console.error('Axios error fetching adjective:', error.message);
-      if (error.response) {
-        console.error('Response data:', error.response.data);
-        console.error('Response status:', error.response.status);
-      }
-    } else {
-      console.error('Error fetching random adjective:', error);
-    }
+    console.error('Error fetching random adjective:', error);
     throw error;
   }
 }
@@ -126,8 +103,8 @@ async function generatePassword(): Promise<{
   // Generate 3 random numbers
   const numbers = Array.from({ length: 3 }, () => getRandomInt(0, 9)).join('');
   
-  // Get 3 random special characters
-  const specials = Array.from({ length: 3 }, () => getRandomElement(specialChars)).join('');
+  // Get 1-3 memorable special characters
+  const specials = Array.from({ length: 1 }, () => getRandomElement(specialChars)).join('');
   
   // Combine to form password
   const password = `${capitalized_adjective}${capitalized_noun}${numbers}${specials}`;
