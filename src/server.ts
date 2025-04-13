@@ -18,19 +18,22 @@ const specialChars = ['!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '-', '_'
 /**
  * Fetches a random noun from WordNet API
  */
-async function fetchRandomNoun(): Promise<string> {
+async function fetchRandomNoun(): Promise<{ word: string; definition: string }> {
   console.log('Fetching random noun...');
   try {
     const response = await axios.get(`${WORDNET_API_URL}/noun`);
     console.log('Noun API response:', response.data);
     
-    if (!response.data || !response.data.word) {
+    if (!response.data || !response.data.word || !response.data.definition) {
       console.error('Invalid noun response structure:', response.data);
       throw new Error('Invalid response from noun API');
     }
     
-    return response.data.word;
-  } catch (error) {
+    return {
+      word: response.data.word,
+      definition: response.data.definition
+    };
+  } catch (error: any) {
     if (axios.isAxiosError(error)) {
       console.error('Axios error fetching noun:', error.message);
       if (error.response) {
@@ -47,19 +50,22 @@ async function fetchRandomNoun(): Promise<string> {
 /**
  * Fetches a random adjective from WordNet API
  */
-async function fetchRandomAdjective(): Promise<string> {
+async function fetchRandomAdjective(): Promise<{ word: string; definition: string }> {
   console.log('Fetching random adjective...');
   try {
     const response = await axios.get(`${WORDNET_API_URL}/adjective`);
     console.log('Adjective API response:', response.data);
     
-    if (!response.data || !response.data.word) {
+    if (!response.data || !response.data.word || !response.data.definition) {
       console.error('Invalid adjective response structure:', response.data);
       throw new Error('Invalid response from adjective API');
     }
     
-    return response.data.word;
-  } catch (error) {
+    return {
+      word: response.data.word,
+      definition: response.data.definition
+    };
+  } catch (error: any) {
     if (axios.isAxiosError(error)) {
       console.error('Axios error fetching adjective:', error.message);
       if (error.response) {
@@ -99,15 +105,23 @@ function getRandomElement<T>(array: T[]): T {
  * Generates a password in the format: Adjective + Noun + 3 numbers + 3 special characters
  * Both adjective and noun are capitalized
  */
-async function generatePassword(): Promise<string> {
+async function generatePassword(): Promise<{
+  password: string;
+  words: {
+    adjective: { word: string; definition: string };
+    noun: { word: string; definition: string };
+  }
+}> {
   // Get adjective first
   console.log('Starting password generation...');
-  const adjective = capitalize(await fetchRandomAdjective());
-  console.log('Got adjective:', adjective);
+  const adjectiveData = await fetchRandomAdjective();
+  const capitalized_adjective = capitalize(adjectiveData.word);
+  console.log('Got adjective:', capitalized_adjective);
   
   // Then get noun 
-  const noun = capitalize(await fetchRandomNoun());
-  console.log('Got noun:', noun);
+  const nounData = await fetchRandomNoun();
+  const capitalized_noun = capitalize(nounData.word);
+  console.log('Got noun:', capitalized_noun);
   
   // Generate 3 random numbers
   const numbers = Array.from({ length: 3 }, () => getRandomInt(0, 9)).join('');
@@ -116,18 +130,31 @@ async function generatePassword(): Promise<string> {
   const specials = Array.from({ length: 3 }, () => getRandomElement(specialChars)).join('');
   
   // Combine to form password
-  const password = `${adjective}${noun}${numbers}${specials}`;
+  const password = `${capitalized_adjective}${capitalized_noun}${numbers}${specials}`;
   console.log('Generated password (obscured):', '*'.repeat(password.length));
-  return password;
+  
+  return {
+    password,
+    words: {
+      adjective: {
+        word: capitalized_adjective,
+        definition: adjectiveData.definition
+      },
+      noun: {
+        word: capitalized_noun,
+        definition: nounData.definition
+      }
+    }
+  };
 }
 
 // Route for generating passwords
 app.get('/generate', async (req: Request, res: Response) => {
   console.log('Password generation request received');
   try {
-    const password = await generatePassword();
+    const result = await generatePassword();
     console.log('Password generated successfully');
-    res.json({ password });
+    res.json(result);
   } catch (error) {
     console.error('Error generating password:', error);
     res.status(500).json({ 

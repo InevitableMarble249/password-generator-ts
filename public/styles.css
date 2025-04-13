@@ -127,4 +127,56 @@ button:hover {
 .dark-mode .spinner {
     border-color: rgba(255, 255, 255, 0.1);
     border-top-color: var(--button-bg);
+}
+
+/* Definition styles */
+.definitions-container {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin: 20px 0;
+}
+
+.definition-box {
+    background-color: var(--container-bg);
+    border: 1px solid var(--input-border);
+    border-radius: 4px;
+    padding: 10px;
+    box-shadow: var(--box-shadow);
+}
+
+.definition-box h3 {
+    margin: 0 0 8px 0;
+    font-size: 1rem;
+    color: var(--title-color);
+    text-align: left;
+}
+
+.word-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.word {
+    font-weight: bold;
+    font-size: 1.1rem;
+}
+
+.definition {
+    font-size: 0.9rem;
+    color: var(--text-color);
+    opacity: 0.9;
+    line-height: 1.4;
+}
+
+/* Media query for larger screens */
+@media (min-width: 768px) {
+    .definitions-container {
+        flex-direction: row;
+    }
+    
+    .definition-box {
+        flex: 1;
+    }
 } 
