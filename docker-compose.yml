@@ -1,0 +1,16 @@
+version: '3'
+
+services:
+  password-generator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./cache:/app/cache
+    restart: unless-stopped
+    environment:
+      - PORT=3000
+      - NODE_ENV=production
+
