@@ -16,40 +16,60 @@ const WORDNET_API_URL = 'http://docker-wordnet:5001/api/random';
 const specialChars = ['!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '-', '_', '+', '=', '{', '}', '[', ']', '|', '\\', ':', ';', '<', '>', ',', '.', '?', '/'];
 
 /**
- * Fetches a random noun from WordNet API with retry logic
+ * Fetches a random noun from WordNet API
  */
-async function fetchRandomNoun(retries = 3): Promise<string> {
+async function fetchRandomNoun(): Promise<string> {
+  console.log('Fetching random noun...');
   try {
-    const response = await axios.get(`${WORDNET_API_URL}/noun`, { timeout: 5000 });
+    const response = await axios.get(`${WORDNET_API_URL}/noun`);
+    console.log('Noun API response:', response.data);
+    
+    if (!response.data || !response.data.word) {
+      console.error('Invalid noun response structure:', response.data);
+      throw new Error('Invalid response from noun API');
+    }
+    
     return response.data.word;
   } catch (error) {
-    console.error('Error fetching random noun:', error);
-    if (retries > 0) {
-      // Wait for 500ms before retrying
-      await new Promise(resolve => setTimeout(resolve, 500));
-      console.log(`Retrying noun fetch (${3 - retries + 1}/3)...`);
-      return fetchRandomNoun(retries - 1);
+    if (axios.isAxiosError(error)) {
+      console.error('Axios error fetching noun:', error.message);
+      if (error.response) {
+        console.error('Response data:', error.response.data);
+        console.error('Response status:', error.response.status);
+      }
+    } else {
+      console.error('Error fetching random noun:', error);
     }
-    throw new Error('Failed to fetch random noun from WordNet API');
+    throw error;
   }
 }
 
 /**
- * Fetches a random adjective from WordNet API with retry logic
+ * Fetches a random adjective from WordNet API
  */
-async function fetchRandomAdjective(retries = 3): Promise<string> {
+async function fetchRandomAdjective(): Promise<string> {
+  console.log('Fetching random adjective...');
   try {
-    const response = await axios.get(`${WORDNET_API_URL}/adjective`, { timeout: 5000 });
+    const response = await axios.get(`${WORDNET_API_URL}/adjective`);
+    console.log('Adjective API response:', response.data);
+    
+    if (!response.data || !response.data.word) {
+      console.error('Invalid adjective response structure:', response.data);
+      throw new Error('Invalid response from adjective API');
+    }
+    
     return response.data.word;
   } catch (error) {
-    console.error('Error fetching random adjective:', error);
-    if (retries > 0) {
-      // Wait for 500ms before retrying
-      await new Promise(resolve => setTimeout(resolve, 500));
-      console.log(`Retrying adjective fetch (${3 - retries + 1}/3)...`);
-      return fetchRandomAdjective(retries - 1);
+    if (axios.isAxiosError(error)) {
+      console.error('Axios error fetching adjective:', error.message);
+      if (error.response) {
+        console.error('Response data:', error.response.data);
+        console.error('Response status:', error.response.status);
+      }
+    } else {
+      console.error('Error fetching random adjective:', error);
     }
-    throw new Error('Failed to fetch random adjective from WordNet API');
+    throw error;
   }
 }
 
@@ -76,14 +96,18 @@ function getRandomElement<T>(array: T[]): T {
 }
 
 /**
- * Generates a fallback password when API fails
+ * Generates a password in the format: Adjective + Noun + 3 numbers + 3 special characters
+ * Both adjective and noun are capitalized
  */
-function generateFallbackPassword(): string {
-  const fallbackAdjectives = ['Happy', 'Clever', 'Brave', 'Bright', 'Smart', 'Quick', 'Strong', 'Active'];
-  const fallbackNouns = ['Tiger', 'Eagle', 'Dolphin', 'Jaguar', 'Falcon', 'Panther', 'Lion', 'Wolf'];
+async function generatePassword(): Promise<string> {
+  // Get adjective first
+  console.log('Starting password generation...');
+  const adjective = capitalize(await fetchRandomAdjective());
+  console.log('Got adjective:', adjective);
   
-  const adjective = getRandomElement(fallbackAdjectives);
-  const noun = getRandomElement(fallbackNouns);
+  // Then get noun 
+  const noun = capitalize(await fetchRandomNoun());
+  console.log('Got noun:', noun);
   
   // Generate 3 random numbers
   const numbers = Array.from({ length: 3 }, () => getRandomInt(0, 9)).join('');
@@ -91,43 +115,25 @@ function generateFallbackPassword(): string {
   // Get 3 random special characters
   const specials = Array.from({ length: 3 }, () => getRandomElement(specialChars)).join('');
   
-  return `${adjective}${noun}${numbers}${specials}`;
-}
-
-/**
- * Generates a password in the format: Adjective + Noun + 3 numbers + 3 special characters
- * Both adjective and noun are capitalized
- */
-async function generatePassword(): Promise<string> {
-  try {
-    // Get random adjective and noun from the WordNet API and capitalize them
-    const [adjective, noun] = await Promise.all([
-      fetchRandomAdjective().then(capitalize),
-      fetchRandomNoun().then(capitalize)
-    ]);
-    
-    // Generate 3 random numbers
-    const numbers = Array.from({ length: 3 }, () => getRandomInt(0, 9)).join('');
-    
-    // Get 3 random special characters
-    const specials = Array.from({ length: 3 }, () => getRandomElement(specialChars)).join('');
-    
-    // Combine to form password
-    return `${adjective}${noun}${numbers}${specials}`;
-  } catch (error) {
-    console.error('Error in password generation, using fallback:', error);
-    return generateFallbackPassword();
-  }
+  // Combine to form password
+  const password = `${adjective}${noun}${numbers}${specials}`;
+  console.log('Generated password (obscured):', '*'.repeat(password.length));
+  return password;
 }
 
 // Route for generating passwords
 app.get('/generate', async (req: Request, res: Response) => {
+  console.log('Password generation request received');
   try {
     const password = await generatePassword();
+    console.log('Password generated successfully');
     res.json({ password });
   } catch (error) {
     console.error('Error generating password:', error);
-    res.status(500).json({ error: 'Failed to generate password' });
+    res.status(500).json({ 
+      error: 'Failed to generate password. Make sure the WordNet API is running.',
+      details: error instanceof Error ? error.message : String(error)
+    });
   }
 });
 

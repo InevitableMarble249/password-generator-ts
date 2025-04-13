@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    async function generatePassword(retryCount = 0) {
+    async function generatePassword() {
         try {
             // Show loading spinner
             loadingSpinner.style.display = 'block';
@@ -37,31 +37,14 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const response = await fetch('/generate');
             
-            // Check if response is ok
             if (!response.ok) {
-                throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+                throw new Error(`Server error: ${response.status}`);
             }
             
             const data = await response.json();
-            
-            // Validate we got a password
-            if (!data.password) {
-                throw new Error('No password returned from server');
-            }
-            
             passwordOutput.value = data.password;
         } catch (error) {
             console.error('Error generating password:', error);
-            
-            // Retry up to 3 times with exponential backoff
-            if (retryCount < 3) {
-                console.log(`Retrying password generation (${retryCount + 1}/3)...`);
-                setTimeout(() => {
-                    generatePassword(retryCount + 1);
-                }, 500 * Math.pow(2, retryCount)); // 500ms, 1s, 2s backoff
-                return;
-            }
-            
             passwordOutput.value = 'Error generating password. Please try again.';
         } finally {
             // Hide loading spinner
