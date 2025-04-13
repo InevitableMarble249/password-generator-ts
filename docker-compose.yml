@@ -1,16 +1,15 @@
-version: '3'
-
 services:
-  password-generator:
-    build:
-      context: .
-      dockerfile: Dockerfile
+  app:
+    build: .
     ports:
       - "3000:3000"
-    volumes:
-      - ./cache:/app/cache
-    restart: unless-stopped
+    depends_on:
+      - docker-wordnet
     environment:
       - PORT=3000
-      - NODE_ENV=production
+
+  docker-wordnet:
+    build: ./docker-wordnet
+    ports:
+      - "5001:5001"
 

@@ -99,4 +99,32 @@ button:hover {
 .theme-toggle:hover {
     transform: scale(1.1);
     background-color: transparent;
+}
+
+/* Loading spinner styles */
+.loading-container {
+    display: flex;
+    justify-content: center;
+    margin: 10px 0;
+    height: 30px;
+}
+
+.spinner {
+    width: 30px;
+    height: 30px;
+    border: 3px solid rgba(0, 0, 0, 0.1);
+    border-radius: 50%;
+    border-top-color: var(--button-bg);
+    animation: spin 1s ease-in-out infinite;
+    display: none; /* Hidden by default */
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.dark-mode .spinner {
+    border-color: rgba(255, 255, 255, 0.1);
+    border-top-color: var(--button-bg);
 } 

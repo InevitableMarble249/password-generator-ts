@@ -4,6 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const copyButton = document.getElementById('copyButton');
     const themeToggle = document.getElementById('themeToggle');
     const themeIcon = themeToggle.querySelector('i');
+    const loadingSpinner = document.getElementById('loadingSpinner');
 
     // Check for saved theme preference or use system preference
     const prefersDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -27,18 +28,49 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    async function generatePassword() {
+    async function generatePassword(retryCount = 0) {
         try {
+            // Show loading spinner
+            loadingSpinner.style.display = 'block';
+            generateButton.disabled = true;
+            passwordOutput.value = '';
+            
             const response = await fetch('/generate');
+            
+            // Check if response is ok
+            if (!response.ok) {
+                throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+            }
+            
             const data = await response.json();
+            
+            // Validate we got a password
+            if (!data.password) {
+                throw new Error('No password returned from server');
+            }
+            
             passwordOutput.value = data.password;
         } catch (error) {
             console.error('Error generating password:', error);
-            passwordOutput.value = 'Error generating password';
+            
+            // Retry up to 3 times with exponential backoff
+            if (retryCount < 3) {
+                console.log(`Retrying password generation (${retryCount + 1}/3)...`);
+                setTimeout(() => {
+                    generatePassword(retryCount + 1);
+                }, 500 * Math.pow(2, retryCount)); // 500ms, 1s, 2s backoff
+                return;
+            }
+            
+            passwordOutput.value = 'Error generating password. Please try again.';
+        } finally {
+            // Hide loading spinner
+            loadingSpinner.style.display = 'none';
+            generateButton.disabled = false;
         }
     }
 
-    generateButton.addEventListener('click', generatePassword);
+    generateButton.addEventListener('click', () => generatePassword());
 
     copyButton.addEventListener('click', () => {
         passwordOutput.select();

@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import express, { Request, Response } from 'express';
+import axios from 'axios';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -8,33 +9,48 @@ const PORT = process.env.PORT || 3000;
 // Serve static files from public directory
 app.use(express.static(path.join(__dirname, '../public')));
 
-// Cache file paths
-const ADJECTIVES_CACHE_PATH = path.join(__dirname, '../cache/adjectives.json');
-const NOUNS_CACHE_PATH = path.join(__dirname, '../cache/nouns.json');
+// WordNet API endpoints
+const WORDNET_API_URL = 'http://docker-wordnet:5001/api/random';
 
 // Special characters for password
 const specialChars = ['!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '-', '_', '+', '=', '{', '}', '[', ']', '|', '\\', ':', ';', '<', '>', ',', '.', '?', '/'];
 
 /**
- * Checks if cache files exist
+ * Fetches a random noun from WordNet API with retry logic
  */
-function cacheExists(): boolean {
-  return fs.existsSync(ADJECTIVES_CACHE_PATH) && fs.existsSync(NOUNS_CACHE_PATH);
+async function fetchRandomNoun(retries = 3): Promise<string> {
+  try {
+    const response = await axios.get(`${WORDNET_API_URL}/noun`, { timeout: 5000 });
+    return response.data.word;
+  } catch (error) {
+    console.error('Error fetching random noun:', error);
+    if (retries > 0) {
+      // Wait for 500ms before retrying
+      await new Promise(resolve => setTimeout(resolve, 500));
+      console.log(`Retrying noun fetch (${3 - retries + 1}/3)...`);
+      return fetchRandomNoun(retries - 1);
+    }
+    throw new Error('Failed to fetch random noun from WordNet API');
+  }
 }
 
 /**
- * Reads cached words from files
+ * Fetches a random adjective from WordNet API with retry logic
  */
-function readFromCache(): Promise<{ adjectives: string[], nouns: string[] }> {
-  return new Promise((resolve, reject) => {
-    try {
-      const adjectives = JSON.parse(fs.readFileSync(ADJECTIVES_CACHE_PATH, 'utf8'));
-      const nouns = JSON.parse(fs.readFileSync(NOUNS_CACHE_PATH, 'utf8'));
-      resolve({ adjectives, nouns });
-    } catch (error) {
-      reject(error);
+async function fetchRandomAdjective(retries = 3): Promise<string> {
+  try {
+    const response = await axios.get(`${WORDNET_API_URL}/adjective`, { timeout: 5000 });
+    return response.data.word;
+  } catch (error) {
+    console.error('Error fetching random adjective:', error);
+    if (retries > 0) {
+      // Wait for 500ms before retrying
+      await new Promise(resolve => setTimeout(resolve, 500));
+      console.log(`Retrying adjective fetch (${3 - retries + 1}/3)...`);
+      return fetchRandomAdjective(retries - 1);
     }
-  });
+    throw new Error('Failed to fetch random adjective from WordNet API');
+  }
 }
 
 /**
@@ -60,38 +76,14 @@ function getRandomElement<T>(array: T[]): T {
 }
 
 /**
- * Main function to load words from cache
+ * Generates a fallback password when API fails
  */
-async function getWords(): Promise<{ adjectives: string[], nouns: string[] }> {
-  if (!cacheExists()) {
-    throw new Error('Cache files do not exist. Please run the generator with WordNet first to create the cache files.');
-  }
+function generateFallbackPassword(): string {
+  const fallbackAdjectives = ['Happy', 'Clever', 'Brave', 'Bright', 'Smart', 'Quick', 'Strong', 'Active'];
+  const fallbackNouns = ['Tiger', 'Eagle', 'Dolphin', 'Jaguar', 'Falcon', 'Panther', 'Lion', 'Wolf'];
   
-  console.log('Loading words from cache...');
-  try {
-    const { adjectives, nouns } = await readFromCache();
-    
-    // Verify cache has enough words
-    if (adjectives.length < 10 || nouns.length < 10) {
-      throw new Error('Cache files contain insufficient words. Please regenerate them.');
-    }
-    
-    console.log(`Loaded ${adjectives.length} adjectives and ${nouns.length} nouns from cache.`);
-    return { adjectives, nouns };
-  } catch (error) {
-    console.error('Error reading cache:', error);
-    throw new Error('Failed to read cache files.');
-  }
-}
-
-/**
- * Generates a password in the format: Adjective + Noun + 3 numbers + 3 special characters
- * Both adjective and noun are capitalized
- */
-function generatePassword(adjectives: string[], nouns: string[]): string {
-  // Get random adjective and noun and capitalize them
-  const adjective = capitalize(getRandomElement(adjectives));
-  const noun = capitalize(getRandomElement(nouns));
+  const adjective = getRandomElement(fallbackAdjectives);
+  const noun = getRandomElement(fallbackNouns);
   
   // Generate 3 random numbers
   const numbers = Array.from({ length: 3 }, () => getRandomInt(0, 9)).join('');
@@ -99,25 +91,39 @@ function generatePassword(adjectives: string[], nouns: string[]): string {
   // Get 3 random special characters
   const specials = Array.from({ length: 3 }, () => getRandomElement(specialChars)).join('');
   
-  // Combine to form password
   return `${adjective}${noun}${numbers}${specials}`;
 }
 
-// Global variables to store loaded words
-let adjectives: string[] = [];
-let nouns: string[] = [];
+/**
+ * Generates a password in the format: Adjective + Noun + 3 numbers + 3 special characters
+ * Both adjective and noun are capitalized
+ */
+async function generatePassword(): Promise<string> {
+  try {
+    // Get random adjective and noun from the WordNet API and capitalize them
+    const [adjective, noun] = await Promise.all([
+      fetchRandomAdjective().then(capitalize),
+      fetchRandomNoun().then(capitalize)
+    ]);
+    
+    // Generate 3 random numbers
+    const numbers = Array.from({ length: 3 }, () => getRandomInt(0, 9)).join('');
+    
+    // Get 3 random special characters
+    const specials = Array.from({ length: 3 }, () => getRandomElement(specialChars)).join('');
+    
+    // Combine to form password
+    return `${adjective}${noun}${numbers}${specials}`;
+  } catch (error) {
+    console.error('Error in password generation, using fallback:', error);
+    return generateFallbackPassword();
+  }
+}
 
 // Route for generating passwords
 app.get('/generate', async (req: Request, res: Response) => {
   try {
-    // Load words if they haven't been loaded yet
-    if (adjectives.length === 0 || nouns.length === 0) {
-      const words = await getWords();
-      adjectives = words.adjectives;
-      nouns = words.nouns;
-    }
-    
-    const password = generatePassword(adjectives, nouns);
+    const password = await generatePassword();
     res.json({ password });
   } catch (error) {
     console.error('Error generating password:', error);
