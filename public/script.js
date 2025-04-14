@@ -6,12 +6,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const themeIcon = themeToggle.querySelector('i');
     const loadingSpinner = document.getElementById('loadingSpinner');
     
-    // Definition elements
-    const adjectiveWord = document.getElementById('adjectiveWord');
-    const adjectiveDefinition = document.getElementById('adjectiveDefinition');
-    const nounWord = document.getElementById('nounWord');
-    const nounDefinition = document.getElementById('nounDefinition');
-
     // Check for saved theme preference or use system preference
     const prefersDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
     const savedTheme = localStorage.getItem('theme');
@@ -34,13 +28,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Clear definition displays
-    function clearDefinitions() {
-        adjectiveWord.textContent = '';
-        adjectiveDefinition.textContent = '';
-        nounWord.textContent = '';
-        nounDefinition.textContent = '';
-    }
 
     async function generatePassword() {
         try {
@@ -48,7 +35,6 @@ document.addEventListener('DOMContentLoaded', () => {
             loadingSpinner.style.display = 'block';
             generateButton.disabled = true;
             passwordOutput.value = '';
-            clearDefinitions();
             
             const response = await fetch('/generate');
             
@@ -60,19 +46,6 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Display password
             passwordOutput.value = data.password;
-            
-            // Display definitions
-            if (data.words) {
-                if (data.words.adjective) {
-                    adjectiveWord.textContent = data.words.adjective.word;
-                    adjectiveDefinition.textContent = data.words.adjective.definition;
-                }
-                
-                if (data.words.noun) {
-                    nounWord.textContent = data.words.noun.word;
-                    nounDefinition.textContent = data.words.noun.definition;
-                }
-            }
         } catch (error) {
             console.error('Error generating password:', error);
             passwordOutput.value = 'Error generating password. Please try again.';
