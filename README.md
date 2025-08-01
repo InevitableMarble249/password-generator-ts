@@ -66,7 +66,8 @@ To run using Docker:
 docker-compose up -d
 ```
 
-The application will be available at `http://localhost:3000`.
+The application will be available at `http://localhost:443`.
+The port can be configured by editing docker-compose.yml
 
 ## Project Structure
 
