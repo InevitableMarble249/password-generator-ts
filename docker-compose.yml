@@ -1,15 +1,14 @@
 services:
-  app:
-    build: .
+  password-generator:
+    container_name: pwgen
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
-      - "3000:3000"
-    depends_on:
-      - docker-wordnet
+      - "443:3000"
+    volumes:
+      # Persist the cache directory across container restarts
+      - ./cache:/app/cache
     environment:
-      - PORT=3000
-
-  docker-wordnet:
-    build: ./docker-wordnet
-    ports:
-      - "5001:5001"
+      NODE_ENV: production
 
